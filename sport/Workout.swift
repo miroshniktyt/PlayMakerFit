@@ -238,7 +238,7 @@ struct WorkoutEditForm: View {
                         .foregroundColor(.secondary)
                 } else {
                     ForEach(workout.exercises.indices, id: \.self) { index in
-                        ExerciseCellView(exercise: workout.exercises[index])
+                        ExerciseCellViewSimple(exercise: workout.exercises[index])
                     }
                     .onDelete(perform: deleteExercises)
                     .onMove(perform: moveExercises)

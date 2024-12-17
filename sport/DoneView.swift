@@ -1,48 +1,53 @@
+////
+////  ArchiveView.swift
+////  sport
+////
+////  Created by pc on 02.10.24.
+////
 //
-//  ArchiveView.swift
-//  sport
+//import SwiftUI
 //
-//  Created by pc on 02.10.24.
+//struct DoneView: View {
 //
-
-import SwiftUI
-
-struct DoneView: View {
-
-    var onTap: (() -> ())
-    
-    var body: some View {
-        VStack(spacing: 20) {
-            Image("cong")
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .padding(64)
-            
-            Text("Training Complete!")
-                .font(.largeTitle)
-                .multilineTextAlignment(.center)
-            
-            Text("(You can find it's record in settings tab)")
-                .multilineTextAlignment(.center)
-                .padding(.bottom)
-
-            Button(action: {
-                onTap()
-            }) {
-                Text("Go Back")
-                    .font(.headline)
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(8)
-                    .padding(.horizontal)
-                    .padding(.horizontal)
-            }
-        }
-    }
-}
-
-#Preview {
-    DoneView(onTap: {})
-}
+//    var onTap: (() -> ())
+//    @Environment(\.presentationMode) var presentationMode
+//    
+//    var body: some View {
+//        VStack(spacing: 20) {
+//            Image("cong")
+//                .resizable()
+//                .aspectRatio(contentMode: .fit)
+//                .padding(64)
+//            
+//            Text("Training Complete!")
+//                .font(.largeTitle)
+//                .multilineTextAlignment(.center)
+//            
+//            Text("(You can find it's record in settings tab)")
+//                .multilineTextAlignment(.center)
+//                .padding(.bottom)
+//
+//            Button(action: {
+//                onTap()
+//            }) {
+//                Text("Go Back")
+//                    .font(.headline)
+//                    .padding()
+//                    .frame(maxWidth: .infinity)
+//                    .background(Color.blue)
+//                    .foregroundColor(.white)
+//                    .cornerRadius(8)
+//                    .padding(.horizontal)
+//                    .padding(.horizontal)
+//            }
+//        }
+//        .onDisappear {
+//            // Call onTap when view is dismissed in any way
+//            onTap()
+//        }
+//    }
+//}
+//
+//#Preview {
+//    DoneView(onTap: {})
+//}

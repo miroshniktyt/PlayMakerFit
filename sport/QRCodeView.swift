@@ -21,21 +21,14 @@ struct QRCodeView: View {
 
     var body: some View {
         VStack {
-            ZStack {
-                Image("qr")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 300, height: 300)
-
                 Image(uiImage: generateQRCode(from: uniqueID))
                     .interpolation(.none)
                     .resizable()
-                    .frame(width: 180, height: 180)
-            }
+                    .frame(width: 200, height: 200)
             .padding(.bottom)
 
             Text("Your Discount QR Code")
-                .font(.largeTitle)
+                .font(.title)
         }
     }
 

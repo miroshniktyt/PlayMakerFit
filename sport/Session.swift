@@ -34,9 +34,11 @@ class WorkoutSessionViewModel: ObservableObject {
     @Published var isWorkoutFinished: Bool = false
     @Published var isModuleFinished: Bool = false
     @Published var currentModuleIndex: Int = 0
+    @Published var activeExerciseId: UUID?
+    @Published var isPaused: Bool = false
+    @Published var isBlinking: Bool = false
     
     let session: any Session
-    
     @Published var moduleGroupedExercises: [[ExerciseSessionData]] = []
     
     class ExerciseSessionData: ObservableObject, Identifiable {
@@ -44,31 +46,23 @@ class WorkoutSessionViewModel: ObservableObject {
         let exercise: Exercise
         let indexInModule: Int
         let totalExercisesInModule: Int
-        @Published var state: ExerciseState
-        @Published var currentTime: Int = 0
-        @Published var isBlinking: Bool = false
+        @Published var progress: Int = 0
         var timer: Timer?
         
-        init(exercise: Exercise, indexInModule: Int, totalExercisesInModule: Int, state: ExerciseState) {
+        init(exercise: Exercise, indexInModule: Int, totalExercisesInModule: Int) {
             self.exercise = exercise
             self.indexInModule = indexInModule
             self.totalExercisesInModule = totalExercisesInModule
-            self.state = state
         }
         
-        func startTimer(onComplete: @escaping () -> Void) {
+        func startTimer() {
             guard let duration = exercise.duration else { return }
-            currentTime = 0
-            isBlinking = true
-            AudioServicesPlaySystemSound(SystemSoundID(1054))
-            
-            timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { timer in
-                if self.currentTime < duration {
-                    self.currentTime += 1
+            timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+                guard let self = self else { return }
+                if self.progress < duration {
+                    self.progress += 1
                 } else {
-                    timer.invalidate()
                     self.stopTimer()
-                    onComplete()
                 }
             }
             RunLoop.current.add(timer!, forMode: .common)
@@ -77,7 +71,6 @@ class WorkoutSessionViewModel: ObservableObject {
         func stopTimer() {
             timer?.invalidate()
             timer = nil
-            isBlinking = false
         }
     }
     
@@ -88,456 +81,443 @@ class WorkoutSessionViewModel: ObservableObject {
                 ExerciseSessionData(
                     exercise: exercise,
                     indexInModule: exerciseIndex,
-                    totalExercisesInModule: module.exercises.count,
-                    state: .notStarted)
+                    totalExercisesInModule: module.exercises.count)
             }
         }
     }
     
-    func startWorkout() {
-        startCurrentModule()
+    func getExerciseState(_ exerciseData: ExerciseSessionData) -> ExerciseState {
+        if let moduleIndex = moduleGroupedExercises.firstIndex(where: { exercises in
+            exercises.contains { $0.id == exerciseData.id }
+        }) {
+            if moduleIndex < currentModuleIndex {
+                return .completed
+            }
+        }
+        
+        if activeExerciseId == exerciseData.id {
+            return .active
+        }
+        
+        let moduleExercises = moduleGroupedExercises[currentModuleIndex]
+        if let activeIndex = moduleExercises.firstIndex(where: { $0.id == activeExerciseId }),
+           let exerciseIndex = moduleExercises.firstIndex(where: { $0.id == exerciseData.id }) {
+            return exerciseIndex < activeIndex ? .completed : .notStarted
+        }
+        
+        return .notStarted
     }
     
-    func startCurrentModule() {
-        guard currentModuleIndex < moduleGroupedExercises.count else {
-            finishWorkout()
+    func activateExercise(_ exerciseData: ExerciseSessionData) {
+        // Stop any existing timers and reset progress
+        if let currentExercise = getCurrentExercise() {
+            currentExercise.stopTimer()
+            currentExercise.progress = 0
+        }
+        
+        if let moduleIndex = moduleGroupedExercises.firstIndex(where: { exercises in
+            exercises.contains { $0.id == exerciseData.id }
+        }) {
+            currentModuleIndex = moduleIndex
+        }
+        
+        // Reset progress of the exercise we're activating
+        exerciseData.progress = 0
+        activeExerciseId = exerciseData.id
+        isPaused = false
+        
+        // Start timer if exercise has duration
+        exerciseData.startTimer()
+    }
+    
+    func togglePause() {
+        isPaused.toggle()
+        if let exercise = getCurrentExercise() {
+            if isPaused {
+                exercise.stopTimer()
+            } else {
+                exercise.startTimer()
+            }
+        }
+    }
+    
+    func getCurrentExercise() -> ExerciseSessionData? {
+        guard let activeId = activeExerciseId else { return nil }
+        return moduleGroupedExercises.flatMap({ $0 }).first(where: { $0.id == activeId })
+    }
+    
+    func completeActiveExercise() {
+        if let exercise = getCurrentExercise() {
+            exercise.stopTimer()
+            exercise.progress = 0
+        }
+        
+        guard let currentExerciseId = activeExerciseId,
+              let currentModuleExercises = moduleGroupedExercises[safe: currentModuleIndex],
+              let currentIndex = currentModuleExercises.firstIndex(where: { $0.id == currentExerciseId }) else {
             return
         }
-        let exercises = moduleGroupedExercises[currentModuleIndex]
-        if let firstExercise = exercises.first, firstExercise.state == .notStarted {
-            firstExercise.state = .active
-            firstExercise.startTimer { [weak self] in
-                self?.handleExerciseCompletion()
-            }
-        }
-    }
-    
-    func moveToNextExercise() {
-        let exercises = moduleGroupedExercises[currentModuleIndex]
-        if let currentIndex = exercises.firstIndex(where: { $0.state == .active }) {
-            let currentExercise = exercises[currentIndex]
-            currentExercise.state = .completed
-            currentExercise.stopTimer()
-            
-            if currentIndex + 1 < exercises.count {
-                let nextExercise = exercises[currentIndex + 1]
-                nextExercise.state = .active
-                nextExercise.startTimer { [weak self] in
-                    self?.handleExerciseCompletion()
-                }
-            } else {
-                finishCurrentModule()
-            }
-        }
-    }
-    
-    func handleExerciseCompletion() {
-        DispatchQueue.main.async { [weak self] in
-            self?.moveToNextExercise()
+        
+        // Check if this is the last exercise in the last module
+        let isLastModule = currentModuleIndex == moduleGroupedExercises.count - 1
+        let isLastExerciseInModule = currentIndex + 1 == currentModuleExercises.count
+        
+        if isLastModule && isLastExerciseInModule {
+            finishWorkout()
+        } else if isLastExerciseInModule {
+            finishCurrentModule()
+        } else {
+            let nextExercise = currentModuleExercises[currentIndex + 1]
+            activeExerciseId = nextExercise.id
+            nextExercise.progress = 0
+            nextExercise.startTimer()
         }
     }
     
     func finishCurrentModule() {
-        let exercises = moduleGroupedExercises[currentModuleIndex]
-
-        if let activeExercise = exercises.first(where: { $0.state == .active }) {
-            activeExercise.state = .completed
-            activeExercise.stopTimer()
-        }
-
-        if currentModuleIndex + 1 < moduleGroupedExercises.count {
-            isModuleFinished = true
-        } else {
+        if currentModuleIndex >= moduleGroupedExercises.count - 1 {
             finishWorkout()
+        } else {
+            isModuleFinished = true
         }
     }
     
     func proceedToNextModule() {
         currentModuleIndex += 1
         isModuleFinished = false
-
-        // Prepare the first exercise in the new module to be in notStarted state
-        let exercises = moduleGroupedExercises[currentModuleIndex]
-        if let firstExercise = exercises.first {
-            firstExercise.state = .notStarted
+        
+        if let firstExercise = moduleGroupedExercises[currentModuleIndex].first {
+            activeExerciseId = firstExercise.id
         }
     }
     
     func finishWorkout() {
+        // Stop all timers
         moduleGroupedExercises.forEach { exercises in
             exercises.forEach { $0.stopTimer() }
         }
+        activeExerciseId = nil
         isWorkoutFinished = true
         
         let record = WorkoutRecord(session: session, date: Date())
         WorkoutHistoryManager().saveWorkoutRecord(record)
+    }
+    
+    func completeModule() {
+        if let currentExercises = moduleGroupedExercises[safe: currentModuleIndex] {
+            for exercise in currentExercises {
+                if getExerciseState(exercise) != .completed {
+                    activeExerciseId = exercise.id
+                    completeActiveExercise()
+                }
+            }
+        }
+        
+        currentModuleIndex += 1
+        activeExerciseId = nil
+        isModuleFinished = false
     }
 }
 
 struct WorkoutSessionView: View {
     @ObservedObject var viewModel: WorkoutSessionViewModel
     @Environment(\.presentationMode) var presentationMode
-    @State private var showFinishAlert = false
-    @State private var showModuleDoneView = false
+    @State private var showQuitAlert = false
     
     var body: some View {
         List {
             ForEach(viewModel.session.modules.indices, id: \.self) { moduleIndex in
                 let module = viewModel.session.modules[moduleIndex]
                 let exercises = viewModel.moduleGroupedExercises[moduleIndex]
+                
                 Section(header: Text(module.name)) {
                     ForEach(exercises) { exerciseData in
+                        let state = viewModel.getExerciseState(exerciseData)
+                        
                         ExerciseSessionCell(
                             exerciseData: exerciseData,
-                            moduleIndex: moduleIndex,
-                            currentModuleIndex: viewModel.currentModuleIndex,
-                            onStart: {
-                                viewModel.startCurrentModule()
+                            viewModel: viewModel,
+                            state: state,
+                            onActivate: {
+                                viewModel.activateExercise(exerciseData)
                             },
-                            onNext: {
-                                viewModel.moveToNextExercise()
+                            onComplete: {
+                                viewModel.completeActiveExercise()
                             },
-                            onFinish: {
-                                viewModel.finishCurrentModule()
-                            }
+                            onBack: state == .active ? {
+                                if let currentExercises = viewModel.moduleGroupedExercises[safe: moduleIndex],
+                                   let currentIndex = currentExercises.firstIndex(where: { $0.id == exerciseData.id }) {
+                                    if currentIndex > 0 {
+                                        // Go to previous exercise in current module
+                                        viewModel.activateExercise(currentExercises[currentIndex - 1])
+                                    } else if moduleIndex > 0 {
+                                        // Go to last exercise of previous module
+                                        let previousModuleExercises = viewModel.moduleGroupedExercises[moduleIndex - 1]
+                                        if let lastExercise = previousModuleExercises.last {
+                                            viewModel.activateExercise(lastExercise)
+                                        }
+                                    }
+                                }
+                            } : nil
                         )
                     }
                 }
             }
         }
         .navigationBarTitle(viewModel.session.name, displayMode: .inline)
-        .navigationBarItems(trailing: Button("Finish") {
-            showFinishAlert = true
+        .navigationBarItems(trailing: Button("Quit") {
+            showQuitAlert = true
         })
-        .alert(isPresented: $showFinishAlert) {
+        .alert(isPresented: $showQuitAlert) {
             Alert(
-                title: Text("Finish Workout"),
-                message: Text("Are you sure you want to cancel the session?"),
-                primaryButton: .destructive(Text("Yes")) {
+                title: Text("Quit Workout"),
+                message: Text("Are you sure you want to quit this workout session?"),
+                primaryButton: .destructive(Text("Quit")) {
                     presentationMode.wrappedValue.dismiss()
                 },
                 secondaryButton: .cancel()
             )
         }
-        .interactiveDismissDisabled(true)
-        .sheet(isPresented: Binding(
-            get: { viewModel.isModuleFinished || viewModel.isWorkoutFinished },
-            set: { _ in }
-        )) {
-            let isTrainingPlanComplete = viewModel.currentModuleIndex + 1 >= viewModel.session.modules.count
+        .sheet(isPresented: $viewModel.isModuleFinished) {
+            let isTrainingPlanComplete = viewModel.currentModuleIndex >= viewModel.moduleGroupedExercises.count - 1
             let moduleName = viewModel.session.modules[viewModel.currentModuleIndex].name
             let nextModuleName = isTrainingPlanComplete ? nil : viewModel.session.modules[viewModel.currentModuleIndex + 1].name
+            
             ModuleDoneView(
                 moduleName: moduleName,
                 isTrainingPlanComplete: isTrainingPlanComplete,
                 nextModuleName: nextModuleName,
-                onNextModule: { viewModel.proceedToNextModule() },
+                onNextModule: { viewModel.completeModule() },
                 onFinish: {
                     viewModel.finishWorkout()
                     presentationMode.wrappedValue.dismiss()
                 }
             )
         }
+        .sheet(isPresented: $viewModel.isWorkoutFinished) {
+            ModuleDoneView(
+                moduleName: viewModel.session.name,
+                isTrainingPlanComplete: true,
+                nextModuleName: nil,
+                onNextModule: { },
+                onFinish: {
+                    presentationMode.wrappedValue.dismiss()
+                }
+            )
+        }
+        .interactiveDismissDisabled(true)
+        .gesture(
+            DragGesture()
+                .onEnded { gesture in
+                    if gesture.translation.height > 50 {
+                        showQuitAlert = true
+                    }
+                }
+        )
     }
 }
 
 struct ExerciseSessionCell: View {
     @ObservedObject var exerciseData: WorkoutSessionViewModel.ExerciseSessionData
-    var moduleIndex: Int
-    var currentModuleIndex: Int
-    var onStart: () -> Void
-    var onNext: () -> Void
-    var onFinish: () -> Void
-
+    @ObservedObject var viewModel: WorkoutSessionViewModel
+    let state: ExerciseState
+    var onActivate: () -> Void
+    var onComplete: () -> Void
+    var onBack: (() -> Void)?
+    
+    @State private var isBlinking = false
+    @State private var isPaused = false
+    
     var body: some View {
-        HStack(alignment: .center) {
-            // Left: Checkmark Image
-            Image(systemName: "checkmark.circle.fill")
-                .resizable()
-                .frame(width: 40, height: 40)
-                .foregroundColor(exerciseData.state == .completed ? .green : .secondary)
-                .opacity(exerciseData.state == .active ? 1.0 : 0.5)
-
-            // Middle: Labels
+        VStack {
+            if state == .active {
+                activeExerciseView
+            } else {
+                inactiveExerciseView
+            }
+        }
+        .padding(.vertical, state == .active ? 16 : 8)
+        .cornerRadius(12)
+    }
+    
+    private var inactiveExerciseView: some View {
+        HStack {
+            CircularTimerView(
+                progress: 0,
+                timeLeft: exerciseData.exercise.duration.map { "\($0)s" } ?? "No\nTime\nSet",
+                color: Color(.systemCyan)
+            )
+            .frame(width: 60, height: 60)
+            .opacity(state == .completed ? 0.5 : 1.0)
+            .padding(.leading, 3)
+            
             VStack(alignment: .leading) {
-                HStack {
-                    Text(exerciseData.exercise.name)
-                        .font(.headline)
-                        .foregroundColor(.primary)
-
-                    if exerciseData.state == .active {
-                        // Blinking Red Indicator
-                        Image(systemName: "circle.fill")
-                            .resizable()
-                            .frame(width: 12, height: 12)
-                            .foregroundColor(.red)
-                            .opacity(exerciseData.isBlinking ? 1 : 0)
-                            .animation(
-                                Animation.linear(duration: 0.8)
-                                    .repeatForever(autoreverses: true),
-                                value: exerciseData.isBlinking
-                            )
-                    }
-                }
-
+                Text(exerciseData.exercise.name)
+                    .font(.headline)
+                
                 if let repetitions = exerciseData.exercise.repetitions {
-                    Text("Reps: \(repetitions)")
+                    Text("\(repetitions) reps")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
+                
                 if let weight = exerciseData.exercise.weight {
-                    Text("Weight: \(exerciseData.exercise.weight!, specifier: "%.1f") kg")
+                    Text("\(weight, specifier: "%.1f") kg")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
             }
             .padding(.leading, 8)
-            .opacity(exerciseData.state == .active ? 1.0 : 0.5)
-
+            
             Spacer()
-
-            // Right: Circular View and Button
-            VStack(alignment: .center, spacing: 12) {
-                // Circular View
-                if let duration = exerciseData.exercise.duration {
-                    CircularTimerView(
-                        progress: exerciseData.state == .active ? CGFloat(exerciseData.currentTime) / CGFloat(duration) : 0,
-                        timeLeft: timeString(from: duration - (exerciseData.state == .active ? exerciseData.currentTime : 0))
-                    )
-                    .frame(width: 60, height: 60)
-                    .opacity(exerciseData.state == .active ? 1.0 : 0.5)
-                } else {
-                    // No time set placeholder
-                    ZStack {
-                        Circle()
-                            .stroke(lineWidth: 6)
-                            .opacity(0.3)
-                            .foregroundColor(Color.blue)
-                        Text("No\nTime\nSet")
-                            .font(.caption2)
-                            .multilineTextAlignment(.center)
-                            .foregroundColor(.gray)
-                    }
-                    .frame(width: 60, height: 60)
-                    .opacity(exerciseData.state == .active ? 1.0 : 0.5)
+            
+            if state == .completed {
+                Text("Done")
+                    .foregroundColor(Color(.systemCyan))
+            } else if state == .notStarted {
+                Button("Start") {
+                    onActivate()
                 }
-
-                // Button
-                if shouldShowButton() {
+                .buttonStyle(CustomBorderedButtonStyle(filled: true))
+            }
+        }
+        .opacity(state == .completed ? 0.5 : 1.0)
+    }
+    
+    private var activeExerciseView: some View {
+        VStack(spacing: 16) {
+            HStack {
+                Text(exerciseData.exercise.name)
+                    .font(.title2)
+                    .bold()
+                
+                if !isPaused {
+                    Image(systemName: "circle.fill")
+                        .resizable()
+                        .frame(width: 8, height: 8)
+                        .foregroundColor(.red)
+                        .opacity(isBlinking ? 1 : 0)
+                        .animation(Animation.easeInOut(duration: 1).repeatForever(), value: isBlinking)
+                        .onAppear { isBlinking = true }
+                        .onDisappear { isBlinking = false }
+                }
+            }
+            
+            if let repetitions = exerciseData.exercise.repetitions {
+                Text("\(repetitions) reps")
+                    .font(.headline)
+            }
+            
+            if let weight = exerciseData.exercise.weight {
+                Text("\(weight, specifier: "%.1f") kg")
+                    .font(.headline)
+            }
+            
+            // Timer circle (if exercise has duration)
+            if let duration = exerciseData.exercise.duration {
+                CircularTimerView(
+                    progress: CGFloat(exerciseData.progress) / CGFloat(duration),
+                    timeLeft: formatTime(duration - exerciseData.progress),
+                    isLarge: true,
+                    color: Color(.systemCyan),
+                    lineWidth: 12
+                )
+                .frame(width: 120, height: 120)
+                .padding(.bottom, 8)
+            }
+            
+            // Control buttons
+            HStack(spacing: 16) {
+                Button(action: { onBack?() }) {
+                    Text("Prev")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(CustomBorderedButtonStyle())
+                
+                if exerciseData.exercise.duration != nil {
                     Button(action: {
-                        handleButtonAction()
+                        isPaused.toggle()
+                        viewModel.togglePause()
                     }) {
-                        Text(buttonTitle())
-                            .font(.headline)
-                            .padding(4)
+                        Text(isPaused ? "Resume" : "Pause")
                             .frame(maxWidth: .infinity)
-                            .background(buttonBackgroundColor())
-                            .foregroundColor(.white)
-                            .cornerRadius(8)
                     }
+                    .buttonStyle(CustomBorderedButtonStyle())
                 }
+                
+                Button(action: onComplete) {
+                    Text(isLastExercise ? "Finish" : "Next")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(CustomBorderedButtonStyle(filled: true))
             }
-            .frame(width: 80)
         }
-        .padding(.vertical, 8)
+        .padding()
     }
-
-    func shouldShowButton() -> Bool {
-        if moduleIndex != currentModuleIndex {
-            return false
-        }
-
-        if exerciseData.state == .active {
-            return true
-        } else if exerciseData.state == .notStarted && exerciseData.indexInModule == 0 {
-            return true
-        }
-        return false
-    }
-
-    func handleButtonAction() {
-        if exerciseData.state == .active {
-            exerciseData.stopTimer()
-            if exerciseData.indexInModule == exerciseData.totalExercisesInModule - 1 {
-                onFinish()
-            } else {
-                onNext()
-            }
-        } else if exerciseData.state == .notStarted && exerciseData.indexInModule == 0 {
-            onStart()
-        }
-    }
-
-    func buttonTitle() -> String {
-        if exerciseData.state == .active {
-            return exerciseData.indexInModule == exerciseData.totalExercisesInModule - 1 ? "Finish" : "Next"
-        } else if exerciseData.state == .notStarted && exerciseData.indexInModule == 0 {
-            return "Start"
-        }
-        return ""
-    }
-
-    func buttonBackgroundColor() -> Color {
-        if exerciseData.state == .active {
-            return exerciseData.indexInModule == exerciseData.totalExercisesInModule - 1 ? Color.red : Color.accentColor
-        } else {
-            return Color.green
-        }
-    }
-
-    func timeString(from seconds: Int) -> String {
+    
+    private func formatTime(_ seconds: Int) -> String {
         let minutes = seconds / 60
         let remainingSeconds = seconds % 60
         return String(format: "%02d:%02d", minutes, remainingSeconds)
+    }
+    
+    private var isLastExercise: Bool {
+        exerciseData.indexInModule == exerciseData.totalExercisesInModule - 1
     }
 }
 
 struct CircularTimerView: View {
     var progress: CGFloat
     var timeLeft: String
-
+    var isLarge: Bool = false
+    var color: Color = .blue
+    var lineWidth: CGFloat = 6
+    
     var body: some View {
         ZStack {
             Circle()
-                .stroke(lineWidth: 6)
+                .stroke(lineWidth: lineWidth)
                 .opacity(0.3)
-                .foregroundColor(Color.blue)
-
-            Circle()
-                .trim(from: 0.0, to: progress)
-                .stroke(style: StrokeStyle(lineWidth: 6, lineCap: .round))
-                .foregroundColor(Color.blue)
-                .rotationEffect(Angle(degrees: -90))
-
+                .foregroundColor(color)
+            
+            if !timeLeft.contains("No") {
+                Circle()
+                    .trim(from: 0.0, to: progress)
+                    .stroke(style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                    .foregroundColor(color)
+                    .rotationEffect(Angle(degrees: -90))
+            }
+            
             Text(timeLeft)
-                .font(.caption)
+                .font(isLarge ? .title.bold() : .caption2)
                 .fontWeight(.bold)
+                .multilineTextAlignment(.center)
         }
-    }
-}
-struct ModuleDoneView: View {
-    let moduleName: String
-    let isTrainingPlanComplete: Bool
-    let nextModuleName: String?
-    let onNextModule: () -> Void
-    let onFinish: () -> Void
-    
-    // Add these properties to track workout stats
-    let duration: TimeInterval = 1110 // 18:30 in seconds (for example)
-    let exerciseCount: Int = 12
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            Image(isTrainingPlanComplete ? "plan_complete_bg" : "workout_complete_bg")
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(minHeight: 100, maxHeight: .infinity)
-                .clipped()
-            
-            VStack(spacing: 16) {
-                Text(isTrainingPlanComplete ? "Congratulations!" : "Workout Completed!")
-                    .font(.system(size: 34, weight: .bold))
-                    .foregroundColor(.white)
-                    .lineLimit(1)
-                
-                Text("Training Plan Complete")
-                    .font(.system(size: 20))
-                    .foregroundColor(.secondary)
-                    .padding(.bottom, 16)
-            }
-            
-            VStack(spacing: 16) {
-                if isTrainingPlanComplete {
-                    HStack(spacing: 20) {
-                        StatBox(value: formatTime(duration), label: "minutes")
-                        StatBox(value: "\(exerciseCount)", label: "exercises")
-                    }
-                    .padding(.bottom, 24)
-                } else {
-                    WorkoutInfoBox(title: "Previous Workout:", workoutName: moduleName)
-                    if let nextWorkout = nextModuleName {
-                        WorkoutInfoBox(title: "Next Workout:", workoutName: nextWorkout)
-                    }
-                }
-                
-                VStack(spacing: 16) {
-                    Button(action: isTrainingPlanComplete ? onFinish : onNextModule) {
-                        Text(isTrainingPlanComplete ? "Finish" : "Next")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 50)
-                            .background(Color.red)
-                            .cornerRadius(10)
-                    }
-                    
-                    Text("This session has been saved to your history")
-                        .font(.system(size: 14))
-                        .foregroundColor(.white)
-                }
-            }
-            .padding(.horizontal, 32)
-            .padding(.vertical, 16)
-        }
-        .background(Color.black.edgesIgnoringSafeArea(.all)) // Add background color for contrast
-    }
-    
-    private func formatTime(_ seconds: TimeInterval) -> String {
-        let minutes = Int(seconds) / 60
-        let remainingSeconds = Int(seconds) % 60
-        return "\(minutes):\(String(format: "%02d", remainingSeconds))"
     }
 }
 
-struct StatBox: View {
-    let value: String
-    let label: String
+struct CustomBorderedButtonStyle: ButtonStyle {
+    var filled: Bool = false
     
-    var body: some View {
-        VStack {
-            Text(value)
-                .font(.system(size: 34, weight: .bold))
-                .foregroundColor(.white)
-            Text(label)
-                .font(.system(size: 16))
-                .foregroundColor(.secondary)
-        }
-        .frame(minWidth: 140, maxWidth: .infinity)
-        .padding(.vertical, 20)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.cyan, lineWidth: 1)
-        )
-    }
-}
-
-struct WorkoutInfoBox: View {
-    let title: String
-    let workoutName: String
-    
-    var body: some View {
-        VStack(spacing: 8) {
-            Text(title)
-                .font(.system(size: 16))
-                .foregroundColor(.white)
-            Text(workoutName)
-                .font(.system(size: 16))
-                .foregroundColor(.red)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.cyan, lineWidth: 1)
-        )
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                Group {
+                    if filled {
+                        Color.red
+                    } else {
+                        Color(UIColor.label.withAlphaComponent(0.15))
+                    }
+                }
+            )
+            .foregroundColor(filled ? .white : .white)
+            .cornerRadius(8)
+            .opacity(configuration.isPressed ? 0.8 : 1.0)
     }
 }
 
 #Preview {
-    ModuleDoneView(
-        moduleName: "moduleName",
-        isTrainingPlanComplete: true,
-        nextModuleName: "nextModuleName",
-        onNextModule: {},
-        onFinish: {})
+    WorkoutSessionView(viewModel: .init(session: ExerciseManager().allTrainingPlans.first!))
 }

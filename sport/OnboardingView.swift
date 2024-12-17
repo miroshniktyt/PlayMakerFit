@@ -9,7 +9,7 @@ struct OnboardingView: View {
         OnboardingPageData(
             imageName: "img-0",
             title: "Welcome to",
-            subtitle: "TrainTrackPro",
+            subtitle: "PlayMakerFit",
             description: "Simple tool to organize your fitness journey with ease!"
         ),
         OnboardingPageData(

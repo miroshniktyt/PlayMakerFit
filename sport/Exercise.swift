@@ -100,6 +100,47 @@ struct ExerciseCellView: View {
     }
 }
 
+// Add this new cell view for workout details
+struct ExerciseCellViewSimple: View {
+    var exercise: Exercise
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(exercise.name)
+                .font(.headline)
+            
+            Text([durationText, weightText, repetitionsText].compactMap { $0 }.joined(separator: " • "))
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 2)
+    }
+    
+    // Helper computed properties for secondary details
+    var durationText: String? {
+        if let duration = exercise.duration {
+            let minutes = duration / 60
+            let seconds = duration % 60
+            return minutes > 0 ? "\(minutes) min \(seconds) sec" : "\(seconds) sec"
+        }
+        return nil
+    }
+    
+    var weightText: String? {
+        if let weight = exercise.weight {
+            return "\(weight) kg"
+        }
+        return nil
+    }
+    
+    var repetitionsText: String? {
+        if let repetitions = exercise.repetitions {
+            return "\(repetitions) reps"
+        }
+        return nil
+    }
+}
+
 struct ExerciseListView: View {
     @State private var exercises: [Exercise] = Exercise.loadFromUserDefaults() ?? ExerciseManager().allExercises
     @State private var selectedExerciseIndex: Int? = nil

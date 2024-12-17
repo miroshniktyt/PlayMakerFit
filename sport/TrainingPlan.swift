@@ -265,9 +265,9 @@ struct TrainingPlanDetailView: View {
 struct TrainingPlanEditForm: View {
     @Binding var trainingPlan: TrainingPlan
     @Binding var isModified: Bool
-
+    
     @State private var isPresentingWorkoutPicker = false
-
+    
     var body: some View {
         Form {
             Section(header: Text("Training Plan Info")) {
@@ -288,7 +288,7 @@ struct TrainingPlanEditForm: View {
                         .foregroundColor(.secondary)
                 } else {
                     ForEach(trainingPlan.modules.indices, id: \.self) { index in
-                        WorkoutCellView2(workout: trainingPlan.modules[index], onPreview: {}, onStart: {}, onDelete: {})
+                        WorkoutCellViewSimple(workout: trainingPlan.modules[index])
                     }
                     .onDelete(perform: deleteWorkouts)
                     .onMove(perform: moveWorkouts)
@@ -305,24 +305,30 @@ struct TrainingPlanEditForm: View {
         }
         .sheet(isPresented: $isPresentingWorkoutPicker) {
             NavigationView {
-                WorkoutPickerView(selectedWorkouts: $trainingPlan.modules)
-                    .navigationBarItems(
-                        leading: Button("Cancel") {
-                            isPresentingWorkoutPicker = false
-                        },
-                        trailing: Button("Done") {
-                            isPresentingWorkoutPicker = false
-                        }
-                    )
+                WorkoutPickerView(selectedWorkouts: Binding(
+                    get: { trainingPlan.modules },
+                    set: { newModules in
+                        trainingPlan.modules = newModules
+                        isModified = true
+                    }
+                ))
+                .navigationBarItems(
+                    leading: Button("Cancel") {
+                        isPresentingWorkoutPicker = false
+                    },
+                    trailing: Button("Done") {
+                        isPresentingWorkoutPicker = false
+                    }
+                )
             }
         }
     }
-
+    
     func deleteWorkouts(at offsets: IndexSet) {
         trainingPlan.modules.remove(atOffsets: offsets)
         isModified = true
     }
-
+    
     func moveWorkouts(from source: IndexSet, to destination: Int) {
         trainingPlan.modules.move(fromOffsets: source, toOffset: destination)
         isModified = true
@@ -332,25 +338,17 @@ struct TrainingPlanEditForm: View {
 struct WorkoutPickerView: View {
     @Binding var selectedWorkouts: [WorkoutModule]
     @Environment(\.presentationMode) var presentationMode
-
+    
     @State private var allWorkouts: [WorkoutModule] = ExerciseManager().allWorkoutModules
     @State private var selectedWorkoutIDs: Set<UUID> = []
-
+    
     var body: some View {
         List(allWorkouts) { workout in
             Button(action: {
                 toggleSelection(for: workout)
             }) {
                 HStack {
-                    VStack(alignment: .leading) {
-                        Text(workout.name)
-                            .font(.headline)
-                        if let description = workout.description, !description.isEmpty {
-                            Text(description)
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                    }
+                    WorkoutCellViewSimple(workout: workout)
                     Spacer()
                     if selectedWorkoutIDs.contains(workout.id) {
                         Image(systemName: "checkmark")
@@ -359,25 +357,40 @@ struct WorkoutPickerView: View {
                 }
             }
         }
-        .navigationBarTitle("Select Workouts", displayMode: .inline)
-        .navigationBarItems(trailing: Button("Done") {
-            applySelection()
-            presentationMode.wrappedValue.dismiss()
-        })
+        .navigationTitle("Select Workouts")
         .onAppear {
+            // Initialize with existing selections
             selectedWorkoutIDs = Set(selectedWorkouts.map { $0.id })
         }
     }
-
+    
     func toggleSelection(for workout: WorkoutModule) {
         if selectedWorkoutIDs.contains(workout.id) {
             selectedWorkoutIDs.remove(workout.id)
+            selectedWorkouts.removeAll { $0.id == workout.id }
         } else {
             selectedWorkoutIDs.insert(workout.id)
+            selectedWorkouts.append(workout)
         }
     }
+}
 
-    func applySelection() {
-        selectedWorkouts = allWorkouts.filter { selectedWorkoutIDs.contains($0.id) }
+// Add this new cell view for training plan details
+struct WorkoutCellViewSimple: View {
+    var workout: WorkoutModule
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(workout.name)
+                .font(.headline)
+                .foregroundColor(.primary)
+
+            Text("\(workout.category.rawValue) • \(workout.exercises.count) exercises")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
+        .padding(.vertical, 8)
     }
 }
