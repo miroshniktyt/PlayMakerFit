@@ -57,11 +57,11 @@ struct TrainingPlanListView: View {
                             trainingPlan: plan,
                             onStart: {
                                 startPlanIndex = trainingPlans.firstIndex(where: { $0.id == plan.id })
+                            },
+                            onEdit: {
+                                selectedPlanIndex = trainingPlans.firstIndex(where: { $0.id == plan.id })
                             }
                         )
-                        .onTapGesture {
-                            selectedPlanIndex = trainingPlans.firstIndex(where: { $0.id == plan.id })
-                        }
                         .swipeActions {
                             if let index = trainingPlans.firstIndex(where: { $0.id == plan.id }) {
                                 Button(role: .destructive) {
@@ -80,11 +80,11 @@ struct TrainingPlanListView: View {
                             trainingPlan: plan,
                             onStart: {
                                 startPlanIndex = trainingPlans.firstIndex(where: { $0.id == plan.id })
+                            },
+                            onEdit: {
+                                selectedPlanIndex = trainingPlans.firstIndex(where: { $0.id == plan.id })
                             }
                         )
-                        .onTapGesture {
-                            selectedPlanIndex = trainingPlans.firstIndex(where: { $0.id == plan.id })
-                        }
                         .swipeActions {
                             if let index = trainingPlans.firstIndex(where: { $0.id == plan.id }) {
                                 Button(role: .destructive) {
@@ -96,25 +96,6 @@ struct TrainingPlanListView: View {
                         }
                     }
                 }
-                
-//                ForEach(trainingPlans.indices, id: \.self) { index in
-//                    TrainingPlanCellView(
-//                        trainingPlan: trainingPlans[index],
-//                        onStart: {
-//                            startPlanIndex = index
-//                        }
-//                    )
-//                    .onTapGesture {
-//                        selectedPlanIndex = index
-//                    }
-//                    .swipeActions {
-//                        Button(role: .destructive) {
-//                            deletePlan(at: index)
-//                        } label: {
-//                            Label("Delete", systemImage: "trash")
-//                        }
-//                    }
-//                }
             }
             .navigationTitle("Training Plans")
             .toolbar {
@@ -171,6 +152,7 @@ struct TrainingPlanListView: View {
 struct TrainingPlanCellView: View {
     var trainingPlan: TrainingPlan
     var onStart: () -> Void
+    var onEdit: () -> Void
 
     var body: some View {
         HStack {
@@ -183,11 +165,23 @@ struct TrainingPlanCellView: View {
                         .foregroundColor(.secondary)
                 }
             }
+            
             Spacer()
-            Button(action: onStart) {
-                Image(systemName: "play.circle")
+            
+            // Edit button
+            Button(action: onEdit) {
+                Image(systemName: "square.and.pencil")
                     .font(.title)
-                    .foregroundColor(.green)
+                    .foregroundColor(.cyan)
+            }
+            .buttonStyle(BorderlessButtonStyle())
+            .padding(.trailing, 4)
+            
+            // Start button
+            Button(action: onStart) {
+                Image(systemName: "play.circle.fill")
+                    .font(.title)
+                    .foregroundColor(.red)
             }
             .buttonStyle(BorderlessButtonStyle())
         }
@@ -393,4 +387,8 @@ struct WorkoutCellViewSimple: View {
         }
         .padding(.vertical, 8)
     }
+}
+
+#Preview {
+    TrainingPlanListView()
 }

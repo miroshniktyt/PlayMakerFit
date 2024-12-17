@@ -13,12 +13,10 @@ struct ModuleDoneView: View {
     let nextModuleName: String?
     let onNextModule: () -> Void
     let onFinish: () -> Void
+    let duration: TimeInterval
+    let exerciseCount: Int
     
     @State private var hasCompletionRun = false
-    
-    // Add these properties to track workout stats
-    let duration: TimeInterval = 1110 // 18:30 in seconds (for example)
-    let exerciseCount: Int = 12
     
     var body: some View {
         VStack(spacing: 0) {
@@ -150,5 +148,7 @@ struct WorkoutInfoBox: View {
         isTrainingPlanComplete: true,
         nextModuleName: "nextModuleName",
         onNextModule: {},
-        onFinish: {})
+        onFinish: {},
+        duration: 1110,
+        exerciseCount: 12)
 }

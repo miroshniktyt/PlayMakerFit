@@ -217,6 +217,15 @@ class WorkoutSessionViewModel: ObservableObject {
         activeExerciseId = nil
         isModuleFinished = false
     }
+    
+    var totalDuration: TimeInterval {
+        let allExercises = moduleGroupedExercises.flatMap { $0 }
+        return TimeInterval(allExercises.reduce(0) { $0 + ($1.exercise.duration ?? 0) })
+    }
+    
+    var totalExerciseCount: Int {
+        moduleGroupedExercises.flatMap { $0 }.count
+    }
 }
 
 struct WorkoutSessionView: View {
@@ -291,7 +300,9 @@ struct WorkoutSessionView: View {
                 onFinish: {
                     viewModel.finishWorkout()
                     presentationMode.wrappedValue.dismiss()
-                }
+                },
+                duration: viewModel.totalDuration,
+                exerciseCount: viewModel.totalExerciseCount
             )
         }
         .sheet(isPresented: $viewModel.isWorkoutFinished) {
@@ -302,7 +313,9 @@ struct WorkoutSessionView: View {
                 onNextModule: { },
                 onFinish: {
                     presentationMode.wrappedValue.dismiss()
-                }
+                },
+                duration: viewModel.totalDuration,
+                exerciseCount: viewModel.totalExerciseCount
             )
         }
         .interactiveDismissDisabled(true)
