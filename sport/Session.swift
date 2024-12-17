@@ -48,6 +48,7 @@ class WorkoutSessionViewModel: ObservableObject {
         let totalExercisesInModule: Int
         @Published var progress: Int = 0
         var timer: Timer?
+        var onComplete: (() -> Void)?
         
         init(exercise: Exercise, indexInModule: Int, totalExercisesInModule: Int) {
             self.exercise = exercise
@@ -61,8 +62,10 @@ class WorkoutSessionViewModel: ObservableObject {
                 guard let self = self else { return }
                 if self.progress < duration {
                     self.progress += 1
-                } else {
-                    self.stopTimer()
+                    if self.progress == duration {
+                        self.stopTimer()
+                        self.onComplete?()
+                    }
                 }
             }
             RunLoop.current.add(timer!, forMode: .common)
@@ -78,10 +81,14 @@ class WorkoutSessionViewModel: ObservableObject {
         self.session = session
         self.moduleGroupedExercises = session.modules.enumerated().map { (moduleIndex, module) in
             module.exercises.enumerated().map { (exerciseIndex, exercise) in
-                ExerciseSessionData(
+                let sessionData = ExerciseSessionData(
                     exercise: exercise,
                     indexInModule: exerciseIndex,
                     totalExercisesInModule: module.exercises.count)
+                sessionData.onComplete = { [weak self] in
+                    self?.completeActiveExercise()
+                }
+                return sessionData
             }
         }
     }
@@ -108,6 +115,18 @@ class WorkoutSessionViewModel: ObservableObject {
         return .notStarted
     }
     
+    private func playTransitionSound() {
+        if UserDefaults.standard.bool(forKey: UserDefaultsKeys.soundEnabled) {
+            AudioServicesPlaySystemSound(1054)
+        }
+    }
+    
+    func playCompletionSound() {
+        if UserDefaults.standard.bool(forKey: UserDefaultsKeys.soundEnabled) {
+            AudioServicesPlaySystemSound(1322)
+        }
+    }
+    
     func activateExercise(_ exerciseData: ExerciseSessionData) {
         // Stop any existing timers and reset progress
         if let currentExercise = getCurrentExercise() {
@@ -125,6 +144,9 @@ class WorkoutSessionViewModel: ObservableObject {
         exerciseData.progress = 0
         activeExerciseId = exerciseData.id
         isPaused = false
+        
+        // Play sound when activating new exercise
+        playTransitionSound()
         
         // Start timer if exercise has duration
         exerciseData.startTimer()
@@ -158,7 +180,6 @@ class WorkoutSessionViewModel: ObservableObject {
             return
         }
         
-        // Check if this is the last exercise in the last module
         let isLastModule = currentModuleIndex == moduleGroupedExercises.count - 1
         let isLastExerciseInModule = currentIndex + 1 == currentModuleExercises.count
         
@@ -171,6 +192,8 @@ class WorkoutSessionViewModel: ObservableObject {
             activeExerciseId = nextExercise.id
             nextExercise.progress = 0
             nextExercise.startTimer()
+            
+            playTransitionSound()
         }
     }
     
@@ -179,25 +202,17 @@ class WorkoutSessionViewModel: ObservableObject {
             finishWorkout()
         } else {
             isModuleFinished = true
-        }
-    }
-    
-    func proceedToNextModule() {
-        currentModuleIndex += 1
-        isModuleFinished = false
-        
-        if let firstExercise = moduleGroupedExercises[currentModuleIndex].first {
-            activeExerciseId = firstExercise.id
+            playCompletionSound()
         }
     }
     
     func finishWorkout() {
-        // Stop all timers
         moduleGroupedExercises.forEach { exercises in
             exercises.forEach { $0.stopTimer() }
         }
         activeExerciseId = nil
         isWorkoutFinished = true
+        playCompletionSound()
         
         let record = WorkoutRecord(session: session, date: Date())
         WorkoutHistoryManager().saveWorkoutRecord(record)
@@ -291,7 +306,6 @@ struct WorkoutSessionView: View {
             let isTrainingPlanComplete = viewModel.currentModuleIndex >= viewModel.moduleGroupedExercises.count - 1
             let moduleName = viewModel.session.modules[viewModel.currentModuleIndex].name
             let nextModuleName = isTrainingPlanComplete ? nil : viewModel.session.modules[viewModel.currentModuleIndex + 1].name
-            
             ModuleDoneView(
                 moduleName: moduleName,
                 isTrainingPlanComplete: isTrainingPlanComplete,

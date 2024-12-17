@@ -14,7 +14,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Store the preference
+        // Set default values for UserDefaults if they don't exist
+        if UserDefaults.standard.object(forKey: UserDefaultsKeys.soundEnabled) == nil {
+            UserDefaults.standard.set(true, forKey: UserDefaultsKeys.soundEnabled)
+        }
+        
+        // Store the dark mode preference
         UserDefaults.standard.set(true, forKey: "forceDarkMode")
         
         let hostingController = ViewController()

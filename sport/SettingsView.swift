@@ -16,10 +16,15 @@ struct SettingsView: View {
     @State private var showOnboarding = false
     @State private var showHistory = false
     @State private var showQr = false
+    @AppStorage(UserDefaultsKeys.soundEnabled) private var isSoundEnabled = true
     
     var body: some View {
         NavigationView {
             Form {
+                Section(header: Text("Preferences")) {
+                    Toggle("Exercise Sounds", isOn: $isSoundEnabled)
+                }
+                
                 Section {
                     Button(action: {
                         showOnboarding = true
@@ -50,24 +55,6 @@ struct SettingsView: View {
 //                        switchAppearanceMode(newValue)
 //                    }
 //                }
-                
-                Section {
-                    Button(action: {
-                        showQr = true
-                    }) {
-                        ZStack {
-                            Image("qr")
-                                .resizable()
-                                .font(.system(size: 40))
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                .scaledToFit()
-                        }
-                    }
-                    .listRowInsets(EdgeInsets())
-                    .sheet(isPresented: $showQr) {
-                        QRCodeView()
-                    }
-                }
                 
                 Section {
                     Button(action: {
@@ -103,6 +90,24 @@ struct SettingsView: View {
                         }
                     }
                     
+                }
+                
+                Section {
+                    Button(action: {
+                        showQr = true
+                    }) {
+                        ZStack {
+                            Image("qr")
+                                .resizable()
+                                .font(.system(size: 40))
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .scaledToFit()
+                        }
+                    }
+                    .listRowInsets(EdgeInsets())
+                    .sheet(isPresented: $showQr) {
+                        QRCodeView()
+                    }
                 }
             }
             .navigationTitle("Settings")
