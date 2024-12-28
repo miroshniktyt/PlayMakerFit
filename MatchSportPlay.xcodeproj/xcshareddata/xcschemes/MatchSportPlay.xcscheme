@@ -16,9 +16,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "4F9352612CAD735400653349"
-               BuildableName = "TrainTrackPro.app"
-               BlueprintName = "TrainTrackPro"
-               ReferencedContainer = "container:PlayMakerFit.xcodeproj">
+               BuildableName = "MatchSportPlay.app"
+               BlueprintName = "MatchSportPlay"
+               ReferencedContainer = "container:MatchSportPlay.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -45,9 +45,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "4F9352612CAD735400653349"
-            BuildableName = "TrainTrackPro.app"
-            BlueprintName = "TrainTrackPro"
-            ReferencedContainer = "container:PlayMakerFit.xcodeproj">
+            BuildableName = "MatchSportPlay.app"
+            BlueprintName = "MatchSportPlay"
+            ReferencedContainer = "container:MatchSportPlay.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -62,9 +62,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "4F9352612CAD735400653349"
-            BuildableName = "TrainTrackPro.app"
-            BlueprintName = "TrainTrackPro"
-            ReferencedContainer = "container:PlayMakerFit.xcodeproj">
+            BuildableName = "MatchSportPlay.app"
+            BlueprintName = "MatchSportPlay"
+            ReferencedContainer = "container:MatchSportPlay.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

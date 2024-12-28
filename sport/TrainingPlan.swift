@@ -7,17 +7,31 @@
 
 import SwiftUI
 
+enum TrainingPlanCategory: String, CaseIterable, Codable, Identifiable {
+    case gym = "Gym"
+    case generalFitness = "General Fitness"
+    case yoga = "Yoga"
+    case football = "Football"
+    case basketBall = "Basketball"
+    case baseball = "Baseball"
+    case cycling = "Cycling"
+    
+    var id: String { self.rawValue }
+}
+
 struct TrainingPlan: Identifiable, Codable, Equatable {
     let id: UUID
     var name: String
     var description: String?
     var modules: [WorkoutModule]
+    var trainingPlanCategory: TrainingPlanCategory
     
-    init(id: UUID = UUID(), name: String, description: String? = nil, modules: [WorkoutModule]) {
+    init(id: UUID = UUID(), name: String, description: String? = nil, trainingPlanCategory: TrainingPlanCategory = .generalFitness, modules: [WorkoutModule]) {
         self.id = id
         self.name = name
         self.description = description
         self.modules = modules
+        self.trainingPlanCategory = trainingPlanCategory
     }
     
     // Methods for saving and loading from UserDefaults
@@ -42,55 +56,40 @@ struct TrainingPlanListView: View {
     @State private var selectedPlanIndex: Int? = nil
     @State private var isAddingPlan = false
     @State private var startPlanIndex: Int? = nil
-    let recommendedWorkoutNames: [String] = ["Total Body Workout Day", "Cardio and Core"]
-    var recommendedPlans: [TrainingPlan] {
-        trainingPlans.filter { recommendedWorkoutNames.contains($0.name) }
+    
+    // Group plans by category
+    var groupedPlans: [(TrainingPlanCategory, [TrainingPlan])] {
+        let grouped = Dictionary(grouping: trainingPlans) { $0.trainingPlanCategory }
+        return TrainingPlanCategory.allCases
+            .compactMap { category in
+                let plans = grouped[category] ?? []
+                return plans.isEmpty ? nil : (category, plans)
+            }
+            .sorted { $0.0.rawValue < $1.0.rawValue }
     }
     
     var body: some View {
         NavigationView {
             List {
-                
-                Section(header: Text("Recommended")) {
-                    ForEach(recommendedPlans, id: \.id) { plan in
-                        TrainingPlanCellView(
-                            trainingPlan: plan,
-                            onStart: {
-                                startPlanIndex = trainingPlans.firstIndex(where: { $0.id == plan.id })
-                            },
-                            onEdit: {
-                                selectedPlanIndex = trainingPlans.firstIndex(where: { $0.id == plan.id })
-                            }
-                        )
-                        .swipeActions {
-                            if let index = trainingPlans.firstIndex(where: { $0.id == plan.id }) {
-                                Button(role: .destructive) {
-                                    deletePlan(at: index)
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
+                ForEach(groupedPlans, id: \.0) { category, plans in
+                    Section(header: Text(category.rawValue)) {
+                        ForEach(plans) { plan in
+                            TrainingPlanCellView(
+                                trainingPlan: plan,
+                                onStart: {
+                                    startPlanIndex = trainingPlans.firstIndex(where: { $0.id == plan.id })
+                                },
+                                onEdit: {
+                                    selectedPlanIndex = trainingPlans.firstIndex(where: { $0.id == plan.id })
                                 }
-                            }
-                        }
-                    }
-                }
-
-                Section(header: Text("All")) {
-                    ForEach(trainingPlans, id: \.id) { plan in
-                        TrainingPlanCellView(
-                            trainingPlan: plan,
-                            onStart: {
-                                startPlanIndex = trainingPlans.firstIndex(where: { $0.id == plan.id })
-                            },
-                            onEdit: {
-                                selectedPlanIndex = trainingPlans.firstIndex(where: { $0.id == plan.id })
-                            }
-                        )
-                        .swipeActions {
-                            if let index = trainingPlans.firstIndex(where: { $0.id == plan.id }) {
-                                Button(role: .destructive) {
-                                    deletePlan(at: index)
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
+                            )
+                            .swipeActions {
+                                if let index = trainingPlans.firstIndex(where: { $0.id == plan.id }) {
+                                    Button(role: .destructive) {
+                                        deletePlan(at: index)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
                                 }
                             }
                         }
@@ -268,6 +267,15 @@ struct TrainingPlanEditForm: View {
                 TextField("Name", text: $trainingPlan.name)
                     .autocapitalization(.words)
                     .onChange(of: trainingPlan.name) { _ in isModified = true }
+                
+                Picker("Category", selection: $trainingPlan.trainingPlanCategory) {
+                    ForEach(TrainingPlanCategory.allCases) { category in
+                        Text(category.rawValue).tag(category)
+                    }
+                }
+                .onChange(of: trainingPlan.trainingPlanCategory) { _ in 
+                    isModified = true 
+                }
 
                 TextEditor(text: Binding(
                     get: { trainingPlan.description ?? "" },

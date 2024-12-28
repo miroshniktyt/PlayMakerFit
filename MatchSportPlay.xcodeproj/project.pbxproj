@@ -16,7 +16,6 @@
 		4F93526A2CAD735600653349 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4F9352692CAD735600653349 /* Assets.xcassets */; };
 		4F93526D2CAD735600653349 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4F93526C2CAD735600653349 /* Preview Assets.xcassets */; };
 		4F9352742CAD736F00653349 /* QRCodeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F9352732CAD736F00653349 /* QRCodeView.swift */; };
-		4F9352762CAD738400653349 /* DoneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F9352752CAD738400653349 /* DoneView.swift */; };
 		4FB0EBFD2CDD0D5E00C884B0 /* ExerciseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FB0EBFC2CDD0D5E00C884B0 /* ExerciseManager.swift */; };
 		4FB0EBFF2CDD305200C884B0 /* Exercise.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FB0EBFE2CDD305200C884B0 /* Exercise.swift */; };
 		4FB0EC012CDD36BE00C884B0 /* Workout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FB0EC002CDD36BE00C884B0 /* Workout.swift */; };
@@ -32,12 +31,11 @@
 		4F81A55D2CB5561500534A50 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		4F81A57D2CB68C4000534A50 /* Session.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Session.swift; sourceTree = "<group>"; };
 		4F81A57F2CB6F79100534A50 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		4F9352622CAD735400653349 /* TrainTrackPro.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TrainTrackPro.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4F9352622CAD735400653349 /* MatchSportPlay.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MatchSportPlay.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4F9352652CAD735400653349 /* sportApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = sportApp.swift; sourceTree = "<group>"; };
 		4F9352692CAD735600653349 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		4F93526C2CAD735600653349 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		4F9352732CAD736F00653349 /* QRCodeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRCodeView.swift; sourceTree = "<group>"; };
-		4F9352752CAD738400653349 /* DoneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DoneView.swift; sourceTree = "<group>"; };
 		4FB0EBFC2CDD0D5E00C884B0 /* ExerciseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseManager.swift; sourceTree = "<group>"; };
 		4FB0EBFE2CDD305200C884B0 /* Exercise.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Exercise.swift; sourceTree = "<group>"; };
 		4FB0EC002CDD36BE00C884B0 /* Workout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Workout.swift; sourceTree = "<group>"; };
@@ -69,7 +67,7 @@
 		4F9352632CAD735400653349 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				4F9352622CAD735400653349 /* TrainTrackPro.app */,
+				4F9352622CAD735400653349 /* MatchSportPlay.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -92,7 +90,6 @@
 				4F9352732CAD736F00653349 /* QRCodeView.swift */,
 				4FFDC42C2CCA8E8E007AB026 /* HistoryView.swift */,
 				4F9352692CAD735600653349 /* Assets.xcassets */,
-				4F9352752CAD738400653349 /* DoneView.swift */,
 				4F93526B2CAD735600653349 /* Preview Content */,
 			);
 			path = sport;
@@ -109,9 +106,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		4F9352612CAD735400653349 /* TrainTrackPro */ = {
+		4F9352612CAD735400653349 /* MatchSportPlay */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 4F9352702CAD735600653349 /* Build configuration list for PBXNativeTarget "TrainTrackPro" */;
+			buildConfigurationList = 4F9352702CAD735600653349 /* Build configuration list for PBXNativeTarget "MatchSportPlay" */;
 			buildPhases = (
 				4F93525E2CAD735400653349 /* Sources */,
 				4F93525F2CAD735400653349 /* Frameworks */,
@@ -121,9 +118,9 @@
 			);
 			dependencies = (
 			);
-			name = TrainTrackPro;
+			name = MatchSportPlay;
 			productName = sport;
-			productReference = 4F9352622CAD735400653349 /* TrainTrackPro.app */;
+			productReference = 4F9352622CAD735400653349 /* MatchSportPlay.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -141,7 +138,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 4F93525D2CAD735400653349 /* Build configuration list for PBXProject "PlayMakerFit" */;
+			buildConfigurationList = 4F93525D2CAD735400653349 /* Build configuration list for PBXProject "MatchSportPlay" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -154,7 +151,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				4F9352612CAD735400653349 /* TrainTrackPro */,
+				4F9352612CAD735400653349 /* MatchSportPlay */,
 			);
 		};
 /* End PBXProject section */
@@ -180,7 +177,6 @@
 				4F81A57E2CB68C4000534A50 /* Session.swift in Sources */,
 				4FB0EC012CDD36BE00C884B0 /* Workout.swift in Sources */,
 				4F9352742CAD736F00653349 /* QRCodeView.swift in Sources */,
-				4F9352762CAD738400653349 /* DoneView.swift in Sources */,
 				4FFDC4292CCA855F007AB026 /* OtherTabView.swift in Sources */,
 				4FFDC42D2CCA8E8E007AB026 /* HistoryView.swift in Sources */,
 				4FB0EC032CDE059A00C884B0 /* TrainingPlan.swift in Sources */,
@@ -389,7 +385,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		4F93525D2CAD735400653349 /* Build configuration list for PBXProject "PlayMakerFit" */ = {
+		4F93525D2CAD735400653349 /* Build configuration list for PBXProject "MatchSportPlay" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				4F93526E2CAD735600653349 /* Debug */,
@@ -398,7 +394,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		4F9352702CAD735600653349 /* Build configuration list for PBXNativeTarget "TrainTrackPro" */ = {
+		4F9352702CAD735600653349 /* Build configuration list for PBXNativeTarget "MatchSportPlay" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				4F9352712CAD735600653349 /* Debug */,
